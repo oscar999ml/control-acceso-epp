@@ -1,0 +1,7 @@
+names:
+- vest
+- no-vest
+nc: 2
+path: C:\Users\desktopk\Downloads\Modelo_de_EPP2\Modelo_de_EPP2\Sistema_EPP\data\entrenamiento\chaleco
+train: images
+val: images

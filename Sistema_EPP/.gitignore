@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+*.spec
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+data/snapshots/
+data/.insightface/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
