@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+*.spec
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Training data & snapshots (too large, generated)
+Sistema_EPP/data/entrenamiento/
+Sistema_EPP/data/snapshots/
+Sistema_EPP/data/.insightface/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Training checkpoints (not needed in repo)
+runs/
