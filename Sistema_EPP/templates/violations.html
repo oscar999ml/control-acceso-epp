@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-header">
+  <h2>Registro de Infracciones</h2>
+  <p>Historial detallado de eventos detectados por el sistema de IA.</p>
+</header>
+
+<section class="card">
+  <div class="card-header">
+    <h3>Historial de Eventos</h3>
+  </div>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Fecha y Hora</th>
+          <th>Cámara</th>
+          <th>Tipo de Infracción</th>
+          <th>Confianza</th>
+          <th>Persona Identificada</th>
+          <th>Ruta de Captura</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in violations %}
+          <tr>
+            <td style="white-space: nowrap;">{{ item["created_at"] }}</td>
+            <td><strong>{{ item["camera_name"] }}</strong></td>
+            <td>
+              <span style="color: var(--danger); font-weight: 600;">{{ item["violation_type"] }}</span>
+            </td>
+            <td>{{ "%.1f"|format(item["confidence"] * 100) }}%</td>
+            <td>{{ item["worker_label"] }}</td>
+            <td style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">{{ item["snapshot_path"] }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6" style="padding: 48px; text-align: center; color: var(--text-muted);">No existen infracciones registradas en la base de datos.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

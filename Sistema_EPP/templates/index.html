@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="monitor-grid">
+  {% for cam in cameras %}
+    {% set status = latest_status.get(cam['id']) %}
+    <div class="camera-wrapper">
+      <article id="cam-card-{{ cam['id'] }}" class="camera-stream
+        {%- if status and status['summary'] and (not status['summary']['helmet_ok'] or not status['summary']['vest_ok']) and status['summary']['active'] %} alert{% endif -%}
+      ">
+        <div class="camera-label">{{ cam["name"] }}</div>
+
+        <img src="{{ url_for('video', camera_id=cam['id']) }}" alt="Cámara {{ cam['name'] }}">
+
+        <!-- Indicador de verificación -->
+        <div id="ver-state-{{ cam['id'] }}" class="ver-state"></div>
+
+        <!-- Barra de Estado Inferior -->
+        <div class="cam-footer">
+          <div>
+            <div class="footer-label">Seguridad</div>
+            <div id="epp-status-{{ cam['id'] }}" class="footer-value">
+              {% if status and status['summary'] %}{{ status["summary"]["text"] }}{% else %}INICIANDO...{% endif %}
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div class="footer-label">Identidad</div>
+            <div id="face-status-{{ cam['id'] }}" class="footer-value">
+              {% if status and status['face'] %}{{ status["face"].label }}{% else %}BUSCANDO...{% endif %}
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Botones de verificación debajo de la cámara -->
+      <div class="cam-controls">
+        <button class="verify-btn" id="start-btn-{{ cam['id'] }}"
+          onclick="startVerification({{ cam['id'] }})">▶ INICIAR VERIFICACIÓN</button>
+        <button class="verify-stop-btn" id="stop-btn-{{ cam['id'] }}"
+          onclick="stopVerification({{ cam['id'] }})" style="display:none">■ DETENER</button>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<script>
+const VER_POLL_INTERVAL = 800;
+const verStates = {};
+let lastSpoken = "";
+let lastSpokenAt = 0;
+
+function speak(text) {
+  const now = Date.now();
+  if (text === lastSpoken && now - lastSpokenAt < 5000) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'es-ES'; u.rate = 1.0;
+  window.speechSynthesis.speak(u);
+  lastSpoken = text;
+  lastSpokenAt = now;
+}
+
+async function startVerification(camId) {
+  try {
+    const r = await fetch(`/api/verificacion/iniciar/${camId}`, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      document.getElementById(`start-btn-${camId}`).style.display = 'none';
+      document.getElementById(`stop-btn-${camId}`).style.display = 'flex';
+    }
+  } catch (e) {}
+}
+
+async function stopVerification(camId) {
+  try {
+    await fetch(`/api/verificacion/detener/${camId}`, { method: 'POST' });
+    document.getElementById(`start-btn-${camId}`).style.display = 'flex';
+    document.getElementById(`stop-btn-${camId}`).style.display = 'none';
+    const el = document.getElementById(`ver-state-${camId}`);
+    if (el) { el.className = 'ver-state'; el.textContent = ''; }
+  } catch (e) {}
+}
+
+async function pollVerification(camId) {
+  try {
+    const r = await fetch(`/api/verificacion/estado/${camId}`);
+    const d = await r.json();
+    const el = document.getElementById(`ver-state-${camId}`);
+    if (!el) return;
+
+    const startBtn = document.getElementById(`start-btn-${camId}`);
+    const stopBtn = document.getElementById(`stop-btn-${camId}`);
+
+    if (d.state === 'idle' || d.state === '') {
+      if (startBtn) startBtn.style.display = 'flex';
+      if (stopBtn) stopBtn.style.display = 'none';
+      el.className = 'ver-state';
+      el.textContent = '';
+      return;
+    }
+
+    if (d.state === 'verifying') {
+      if (startBtn) startBtn.style.display = 'none';
+      if (stopBtn) stopBtn.style.display = 'flex';
+      el.className = 'ver-state ver-verifying';
+      el.textContent = `⏳`;
+    } else if (d.state === 'done') {
+      if (startBtn) startBtn.style.display = 'none';
+      if (stopBtn) stopBtn.style.display = 'flex';
+      if (d.allowed) {
+        el.className = 'ver-state ver-allowed';
+        el.textContent = `✅ ${d.person}`;
+        speak(`Bienvenido, ${d.person}`);
+      } else {
+        el.className = 'ver-state ver-denied';
+        el.textContent = `❌ ${d.reason || 'DENEGADO'}`;
+        speak(`Acceso denegado. ${d.reason || ''}`);
+      }
+      setTimeout(() => {
+        el.className = 'ver-state';
+        el.textContent = '';
+        if (startBtn) startBtn.style.display = 'flex';
+        if (stopBtn) stopBtn.style.display = 'none';
+      }, 4000);
+    }
+  } catch (e) {}
+}
+
+// Main status update
+async function updateStatus() {
+  try {
+    const r = await fetch('/estado.json');
+    const data = await r.json();
+    data.camaras.forEach(cam => {
+      const epp = document.getElementById(`epp-status-${cam.id}`);
+      const face = document.getElementById(`face-status-${cam.id}`);
+      if (epp && cam.tiene_lectura) {
+        epp.textContent = cam.texto;
+        epp.style.color = cam.alerta ? 'var(--danger)' : 'var(--success)';
+      }
+      if (face && cam.tiene_lectura) {
+        face.textContent = cam.persona;
+      }
+    });
+  } catch (e) {}
+}
+
+// Init
+const camIds = [{% for c in cameras %}{{ c['id'] }},{% endfor %}];
+camIds.forEach(id => {
+  setInterval(() => pollVerification(id), VER_POLL_INTERVAL);
+});
+setInterval(updateStatus, 1500);
+</script>
+{% endblock %}

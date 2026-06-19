@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-header">
+  <h2>Entrenamiento de Chaleco</h2>
+  <p>Ponte el chaleco frente a la cámara y captura fotos desde diferentes ángulos para mejorar la detección.</p>
+</header>
+
+<div class="access-container" style="grid-template-columns: 1fr 1fr;">
+  <section class="card">
+    <h3>Capturar Foto</h3>
+    <div style="margin: 15px 0;">
+      <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:6px;">Ángulo:</label>
+      <select id="angle-select" style="width:100%;padding:8px;">
+        <option value="frente">De frente</option>
+        <option value="perfil_3_4">3/4 perfil</option>
+        <option value="lado">Lado</option>
+        <option value="espalda">Espalda</option>
+      </select>
+    </div>
+    <div style="margin: 15px 0;">
+      <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:6px;">Cámara:</label>
+      <select id="cam-select" style="width:100%;padding:8px;">
+        {% for cam in cameras %}
+          <option value="{{ cam['id'] }}">{{ cam["name"] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button id="btn-capture" style="width:100%;padding:12px;font-size:1rem;">📷 CAPTURAR</button>
+    <div id="capture-result" style="margin-top:12px;font-weight:600;color:var(--text-muted);"></div>
+  </section>
+
+  <section class="card">
+    <h3>Fotos Capturadas</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+      {% for foto in fotos %}
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+          <img src="{{ url_for('entrenamiento_fotos', filename=foto.name) }}" style="width:100%;display:block;">
+          <div style="padding:4px 8px;font-size:0.7rem;color:var(--text-muted);">{{ foto.name }}</div>
+        </div>
+      {% else %}
+        <p style="color:var(--text-muted);grid-column:span 2;">Aún no hay fotos capturadas.</p>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+
+<button id="btn-train" style="margin-top:20px;width:100%;padding:16px;font-size:1.1rem;background:var(--primary);">
+  🚀 ENTRENAR MODELO CON {{ fotos|length }} FOTOS
+</button>
+<div id="train-result" style="margin-top:12px;font-weight:600;text-align:center;"></div>
+
+<style>
+#btn-capture { background: #22c55e; color: #000; font-weight: 700; border: none; border-radius: 10px; cursor: pointer; }
+#btn-capture:hover { background: #16a34a; }
+#btn-capture:disabled { background: #555; cursor: not-allowed; }
+#btn-train { border: none; border-radius: 10px; cursor: pointer; font-weight: 800; }
+#btn-train:disabled { background: #555; cursor: not-allowed; }
+</style>
+
+<script>
+const btnCap = document.getElementById('btn-capture');
+const btnTrain = document.getElementById('btn-train');
+const resultDiv = document.getElementById('capture-result');
+const trainResult = document.getElementById('train-result');
+
+btnCap.addEventListener('click', async () => {
+  btnCap.disabled = true;
+  resultDiv.textContent = 'Capturando...';
+  
+  const formData = new FormData();
+  formData.append('camera_id', document.getElementById('cam-select').value);
+  formData.append('angle', document.getElementById('angle-select').value);
+  
+  try {
+    const r = await fetch("{{ url_for('api_capture_train') }}", { method: 'POST', body: formData });
+    const d = await r.json();
+    resultDiv.textContent = d.mensaje;
+    resultDiv.style.color = d.ok ? 'var(--success)' : 'var(--danger)';
+    if (d.ok) setTimeout(() => window.location.reload(), 1500);
+  } catch (e) {
+    resultDiv.textContent = 'Error de conexión';
+    resultDiv.style.color = 'var(--danger)';
+  }
+  btnCap.disabled = false;
+});
+
+btnTrain.addEventListener('click', async () => {
+  btnTrain.disabled = true;
+  trainResult.textContent = 'Entrenando... (puede tomar varios minutos)';
+  trainResult.style.color = 'var(--text-muted)';
+  
+  try {
+    const r = await fetch("{{ url_for('api_train_model') }}", { method: 'POST' });
+    const d = await r.json();
+    trainResult.textContent = d.mensaje;
+    trainResult.style.color = d.ok ? 'var(--success)' : 'var(--danger)';
+  } catch (e) {
+    trainResult.textContent = 'Error de conexión';
+    trainResult.style.color = 'var(--danger)';
+  }
+  btnTrain.disabled = false;
+});
+</script>
+{% endblock %}

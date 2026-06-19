@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-header">
+  <h2>Panel de Control</h2>
+  <p>Configuración global de dispositivos, visualización de métricas e historial de seguridad.</p>
+</header>
+
+<div class="monitor-grid" style="grid-template-columns: 1fr 1.5fr; gap: 32px; align-items: start;">
+  <!-- Gestión de Cámaras -->
+  <section class="card" style="padding: 30px;">
+    <h3 style="display: flex; align-items: center; gap: 10px;">
+      ⚙️ Configuración de Cámaras
+    </h3>
+    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 24px; line-height: 1.6;">
+      Agregue nuevas fuentes de video IP. El sistema bloqueará automáticamente cualquier intento de usar cámaras locales para mayor seguridad.
+    </p>
+    
+    <form action="{{ url_for('create_camera') }}" method="post" style="display: flex; flex-direction: column; gap: 16px;">
+      <div>
+        <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 600;">NOMBRE DEL DISPOSITIVO</label>
+        <input name="name" placeholder="Ej. Área de Carga" required>
+      </div>
+      <div>
+        <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; display: block; font-weight: 600;">DIRECCIÓN IP / RTSP</label>
+        <input name="source" placeholder="Ej. 192.168.1.100:8080" required>
+      </div>
+      <button type="submit" style="margin-top: 8px; padding: 14px;">Vincular Cámara</button>
+    </form>
+
+    <div style="margin-top: 40px;">
+      <h4 style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px; text-transform: uppercase;">Dispositivos Conectados</h4>
+      <div style="display: grid; gap: 12px;">
+        {% for cam in cameras %}
+          <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border); padding: 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 600; font-size: 0.95rem;">{{ cam["name"] }}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">{{ cam["source"] }}</div>
+            </div>
+            <form action="{{ url_for('remove_camera', camera_id=cam['id']) }}" method="post" style="margin:0;">
+              <button type="submit" style="background: rgba(239,68,68,0.1); color: var(--danger); border: 1px solid var(--danger); padding: 6px 12px; font-size: 0.75rem; border-radius: 6px;">Eliminar</button>
+            </form>
+          </div>
+        {% else %}
+          <div style="text-align: center; padding: 30px; border: 2px dashed var(--border); border-radius: 12px; color: var(--text-muted); font-size: 0.85rem;">
+            No hay cámaras vinculadas.
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Métricas e Infracciones -->
+  <section>
+    <div class="card" style="margin-bottom: 32px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3>📊 Resumen de Incidentes</h3>
+        <a href="{{ url_for('download_excel') }}" style="text-decoration: none;">
+          <button style="background: #10b981; padding: 8px 16px; font-size: 0.8rem;">📥 Descargar Excel</button>
+        </a>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        {% for row in totals %}
+          <div style="background: #0f172a; padding: 24px; border-radius: 16px; border: 1px solid var(--border); text-align: center;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.05em;">
+              {% if row["violation_type"] == "no-helmet" %}Sin Casco
+              {% elif row["violation_type"] == "no-vest" %}Sin Chaleco
+              {% else %}{{ row["violation_type"] }}{% endif %}
+            </div>
+            <div style="font-size: 2.5rem; font-weight: 800; color: var(--danger);">{{ row["total"] }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3>⚠️ Últimas Alertas Registradas</h3>
+        <a href="{{ url_for('violations') }}" style="font-size: 0.8rem; color: var(--primary); font-weight: 600; text-decoration: none;">Ver todas →</a>
+      </div>
+      <div class="table-wrap" style="margin-top: 0;">
+        <table>
+          <thead>
+            <tr>
+              <th>HORA</th>
+              <th>CÁMARA</th>
+              <th>TIPO</th>
+              <th>IDENTIDAD</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in violations[:8] %}
+              <tr>
+                <td style="font-size: 0.8rem; color: var(--text-muted);">{{ item["created_at"].split(' ')[1] }}</td>
+                <td style="font-weight: 600;">{{ item["camera_name"] }}</td>
+                <td>
+                  <span style="color: var(--danger); font-weight: 700; font-size: 0.8rem;">
+                    {% if item["violation_type"] == "no-helmet" %}Sin Casco
+                    {% elif item["violation_type"] == "no-vest" %}Sin Chaleco
+                    {% else %}{{ item["violation_type"] }}{% endif %}
+                  </span>
+                </td>
+                <td style="font-size: 0.85rem;">{{ item["worker_label"] }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">Sin incidentes hoy.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

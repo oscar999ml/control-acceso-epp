@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-header">
+  <h2>Gestión de Personal y Visitantes</h2>
+  <p>Registre personal interno o visitantes y vincule su biometría mediante fotos o captura en vivo.</p>
+</header>
+
+<div class="access-container" style="grid-template-columns: 450px 1fr;">
+  <!-- Formulario de Registro -->
+  <section class="card">
+    <h3>Registrar Identidad Nueva</h3>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px;">
+      Ingrese los datos básicos. No se requiere entrenamiento; el sistema reconocerá a la persona instantáneamente después de subir su foto.
+    </p>
+    <form method="post" style="display: flex; flex-direction: column; gap: 16px;">
+      <div>
+        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px;">TIPO DE PERSONA</label>
+        <select name="person_type" required>
+          <option value="Personal">Personal Interno</option>
+          <option value="Visitante">Visitante</option>
+        </select>
+      </div>
+      <div>
+        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px;">NOMBRE COMPLETO</label>
+        <input name="full_name" placeholder="Ej. Juan Pérez" required>
+        <input type="hidden" name="code" value="">
+      </div>
+      <div>
+        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px;">ÁREA / CARGO (Opcional)</label>
+        <input name="area" placeholder="Ej. Mantenimiento">
+      </div>
+      <button type="submit" style="margin-top: 10px;">REGISTRAR DATOS</button>
+    </form>
+  </section>
+
+  <!-- Lista de Personal -->
+  <section class="card">
+    <h3>Registro Biométrico</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Nombre</th>
+            <th>Biometría</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for worker in workers %}
+            <tr>
+              <td>
+                <span class="status-badge {{ 'success' if worker['person_type'] == 'Personal' else 'warning' }}" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                  {{ worker["person_type"] }}
+                </span>
+              </td>
+              <td><div style="font-weight: 600;">{{ worker["full_name"] }}</div><div style="font-size: 0.7rem; color: var(--text-muted);">{{ worker["code"] }}</div></td>
+              <td>
+                {% if worker["face_template"] %}
+                  <span style="color: var(--success); font-weight: 700;">● REGISTRADO</span>
+                {% else %}
+                  <span style="color: var(--danger); font-weight: 700;">○ PENDIENTE</span>
+                {% endif %}
+              </td>
+              <td>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <!-- Eliminar -->
+                  <form method="post" action="/workers/{{ worker['id'] }}/delete" onsubmit="return confirm('¿Eliminar a {{ worker['full_name'] }}?')">
+                    <button type="submit" style="padding: 4px 10px; font-size: 0.7rem; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; width: 100%; cursor: pointer; border-radius: 6px;">ELIMINAR</button>
+                  </form>
+                  <!-- Subir Foto -->
+                  <form class="upload-form" style="display: flex; gap: 4px;">
+                    <input type="hidden" name="worker_id" value="{{ worker['id'] }}">
+                    <input type="file" name="photo" accept="image/*" style="display: none;" id="file-{{ worker['id'] }}" onchange="uploadPhoto(this, {{ worker['id'] }})">
+                    <button type="button" onclick="document.getElementById('file-{{ worker['id'] }}').click()" style="padding: 6px 10px; font-size: 0.7rem; background: var(--bg-main); border: 1px solid var(--border); flex: 1;">SUBIR FOTO</button>
+                  </form>
+                  <!-- Captura en Vivo con Preview -->
+                  <div style="display: flex; gap: 4px;">
+                    <input type="hidden" class="fw-worker-id" value="{{ worker['id'] }}">
+                    <select class="fw-camera-select" required style="padding: 4px; font-size: 0.7rem; width: 80px;">
+                      {% for cam in cameras %}
+                        <option value="{{ cam['id'] }}">{{ cam["name"] }}</option>
+                      {% endfor %}
+                    </select>
+                    <button type="button" class="btn-envivo" style="padding: 6px 10px; font-size: 0.7rem; background: var(--primary); flex: 1;">EN VIVO</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">No hay personas registradas.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<!-- MODAL CAPTURA EN VIVO -->
+<div id="capture-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-content">
+    <div class="capture-preview">
+      <img id="modal-video" src="" alt="Preview">
+      <div id="modal-countdown" class="capture-countdown">5</div>
+      <div id="modal-hint" class="capture-hint">Coloque su rostro frente a la cámara</div>
+    </div>
+    <div class="capture-actions">
+      <span id="modal-result" class="capture-result"></span>
+      <button id="modal-close-btn" class="capture-btn-cancel">CANCELAR</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.85); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-content {
+  background: #1e293b; border-radius: 16px; overflow: hidden;
+  width: 640px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+  border: 1px solid var(--border);
+}
+.capture-preview {
+  position: relative; background: #000; aspect-ratio: 16/9;
+}
+.capture-preview img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.capture-countdown {
+  position: absolute; top: 16px; right: 16px;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(0,0,0,0.7); color: white;
+  font-size: 1.5rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--primary);
+}
+.capture-hint {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.7); color: #ffb400;
+  padding: 8px 20px; border-radius: 20px;
+  font-size: 0.85rem; font-weight: 600; white-space: nowrap;
+}
+.capture-actions {
+  padding: 12px 16px; display: flex; justify-content: space-between;
+  align-items: center; border-top: 1px solid var(--border);
+}
+.capture-result { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
+.capture-btn-cancel {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-muted); padding: 6px 16px; border-radius: 8px;
+  font-size: 0.75rem; font-weight: 600; cursor: pointer;
+}
+.capture-btn-cancel:hover { background: rgba(255,255,255,0.05); color: white; }
+</style>
+
+<script>
+const modal = document.getElementById('capture-modal');
+const modalVideo = document.getElementById('modal-video');
+const modalCountdown = document.getElementById('modal-countdown');
+const modalHint = document.getElementById('modal-hint');
+const modalResult = document.getElementById('modal-result');
+const modalClose = document.getElementById('modal-close-btn');
+
+let captureTimer = null;
+let captureAborted = false;
+
+modalClose.addEventListener('click', () => closeModal());
+
+function closeModal() {
+  captureAborted = true;
+  if (captureTimer) { clearInterval(captureTimer); captureTimer = null; }
+  modalVideo.src = '';
+  modal.style.display = 'none';
+}
+
+async function uploadPhoto(input, workerId) {
+  if (!input.files || !input.files[0]) return;
+  const formData = new FormData();
+  formData.append('worker_id', workerId);
+  formData.append('photo', input.files[0]);
+  try {
+    const r = await fetch("{{ url_for('api_upload_face') }}", { method: 'POST', body: formData });
+    const d = await r.json();
+    alert(d.mensaje);
+    if (d.correcto) window.location.reload();
+  } catch (e) { alert("Error al subir la imagen"); }
+}
+
+document.querySelectorAll('.btn-envivo').forEach((btn) => {
+  btn.addEventListener('click', function () {
+    const row = this.closest('tr') || this.closest('div');
+    const workerId = row.querySelector('.fw-worker-id').value;
+    const cameraId = row.querySelector('.fw-camera-select').value;
+
+    captureAborted = false;
+    modalResult.textContent = '';
+    modalHint.textContent = 'Coloque su rostro frente a la cámara';
+    modalVideo.src = "{{ url_for('video_face', camera_id=999) }}".replace('999', cameraId);
+    modal.style.display = 'flex';
+
+    let count = 5;
+    modalCountdown.textContent = count;
+    modalCountdown.style.borderColor = 'var(--primary)';
+
+    if (captureTimer) clearInterval(captureTimer);
+    captureTimer = setInterval(() => {
+      if (captureAborted) return;
+      count--;
+      if (count <= 0) {
+        clearInterval(captureTimer);
+        captureTimer = null;
+        modalCountdown.textContent = '...';
+        modalHint.textContent = 'CAPTURANDO...';
+        doCapture(workerId, cameraId);
+      } else {
+        modalCountdown.textContent = count;
+      }
+    }, 1000);
+  });
+});
+
+async function doCapture(workerId, cameraId) {
+  try {
+    const formData = new FormData();
+    formData.append('worker_id', workerId);
+    formData.append('camera_id', cameraId);
+
+    const r = await fetch("{{ url_for('api_register_face') }}", { method: 'POST', body: formData });
+    const d = await r.json();
+
+    modalResult.textContent = d.mensaje;
+    modalResult.style.color = d.correcto ? 'var(--success)' : 'var(--danger)';
+    modalHint.textContent = d.correcto ? 'REGISTRO EXITOSO' : 'INTENTE DE NUEVO';
+    modalCountdown.style.borderColor = d.correcto ? 'var(--success)' : 'var(--danger)';
+
+    if (d.correcto) {
+      setTimeout(() => { closeModal(); window.location.reload(); }, 2000);
+    } else {
+      // Permitir reintentar
+      setTimeout(() => {
+        if (!captureAborted) {
+          modalHint.textContent = 'Coloque su rostro frente a la cámara';
+          modalResult.textContent = '';
+          let count = 5;
+          modalCountdown.textContent = count;
+          modalCountdown.style.borderColor = 'var(--primary)';
+          if (captureTimer) clearInterval(captureTimer);
+          captureTimer = setInterval(() => {
+            if (captureAborted) return;
+            count--;
+            if (count <= 0) {
+              clearInterval(captureTimer);
+              captureTimer = null;
+              modalCountdown.textContent = '...';
+              modalHint.textContent = 'CAPTURANDO...';
+              doCapture(workerId, cameraId);
+            } else {
+              modalCountdown.textContent = count;
+            }
+          }, 1000);
+        }
+      }, 2000);
+    }
+  } catch (e) {
+    modalResult.textContent = 'Error de conexión';
+    modalResult.style.color = 'var(--danger)';
+  }
+}
+</script>
+{% endblock %}

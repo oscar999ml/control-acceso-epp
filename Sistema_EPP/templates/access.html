@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-header">
+  <h2>Configuración de Acceso</h2>
+  <p>Defina qué cámara se encargará de la validación automática de identidad y EPP.</p>
+</header>
+
+<div class="access-container" style="grid-template-columns: 450px 1fr; gap: 32px;">
+  <!-- Panel de Selección -->
+  <section class="card">
+    <h3>Punto de Entrada Designado</h3>
+    <form method="post" style="display: flex; flex-direction: column; gap: 20px;">
+      <div>
+        <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">SELECCIONE CÁMARA PRINCIPAL</label>
+        <select name="camera_id" required>
+          <option value="0">Desactivar Acceso Automático</option>
+          {% for cam in cameras %}
+            <option value="{{ cam['id'] }}" {{ 'selected' if cam['is_access_control'] == 1 else '' }}>
+              {{ cam["name"] }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" style="width: 100%; padding: 14px;">GUARDAR CONFIGURACIÓN</button>
+    </form>
+    
+    <div style="margin-top: 24px; padding: 16px; background: rgba(79, 70, 229, 0.1); border-radius: 12px; border: 1px solid var(--primary);">
+      <p style="font-size: 0.85rem; color: var(--text-main); line-height: 1.5;">
+        <strong>Nota:</strong> Al seleccionar una cámara, el sistema activará automáticamente las notificaciones de acceso sobre el video en la pantalla principal.
+      </p>
+    </div>
+  </section>
+
+  <!-- Historial Compacto -->
+  <section class="card">
+    <h3>Historial de Verificaciones</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>HORA</th>
+            <th>IDENTIDAD</th>
+            <th>RESULTADO</th>
+            <th>MOTIVO</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in events[:15] %}
+            <tr>
+              <td style="color: var(--text-muted); font-size: 0.8rem;">{{ item["created_at"].split(' ')[1] }}</td>
+              <td style="font-weight: 600;">{{ item["person_label"] }}</td>
+              <td>
+                <span class="status-badge {{ 'success' if item['decision'] == 'PERMITIDO' else 'danger' }}">
+                  {{ item["decision"] }}
+                </span>
+              </td>
+              <td style="font-size: 0.8rem; color: var(--text-muted);">{{ item["reason"] }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">Sin registros aún.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

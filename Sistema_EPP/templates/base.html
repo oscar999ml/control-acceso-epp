@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monitoreo EPP con IA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.7">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1>Monitoreo EPP</h1>
+      <span>con IA de Seguridad</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' else '' }}">
+        <span>Cámaras</span>
+      </a>
+      <a href="{{ url_for('access_control') }}" class="{{ 'active' if request.endpoint == 'access_control' else '' }}">
+        <span>Configurar Acceso</span>
+      </a>
+      <a href="{{ url_for('evidence') }}" class="{{ 'active' if request.endpoint == 'evidence' else '' }}">
+        <span>Evidencias (Fotos)</span>
+      </a>
+      <a href="{{ url_for('admin') }}" class="{{ 'active' if request.endpoint == 'admin' else '' }}">
+        <span>Panel de Control</span>
+      </a>
+      <a href="{{ url_for('workers') }}" class="{{ 'active' if request.endpoint == 'workers' else '' }}">
+        <span>Personal</span>
+      </a>
+      <a href="{{ url_for('entrenamiento') }}" class="{{ 'active' if request.endpoint == 'entrenamiento' else '' }}">
+        <span>Entrenar Chaleco</span>
+      </a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <div id="alert-root" class="alert-root" hidden></div>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='alerts.js') }}" defer></script>
+</body>
+</html>
