@@ -579,6 +579,10 @@ def video_face(camera_id: int):
     )
 
 
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok", "app": "Sistema EPP", "version": "1.0.0"})
+
 @app.route("/estado.json")
 def status_json():
     return jsonify(build_status_payload())
