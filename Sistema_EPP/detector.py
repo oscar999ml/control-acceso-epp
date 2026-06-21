@@ -14,8 +14,6 @@ MODEL_DIR = ROOT.parent
 CASCO_MODEL = MODEL_DIR / "Casco.pt"
 SNAPSHOT_DIR = ROOT / "data" / "snapshots"
 
-DETECTOR_VERSION = "2.0.0"
-
 SPANISH_LABELS = {
     "helmet": "Casco",
     "no-helmet": "Sin Casco",
