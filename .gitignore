@@ -31,8 +31,13 @@ Sistema_EPP/data/.insightface/
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
 
 # Logs
 *.log
+
+# Data
+Sistema_EPP/data/rostros/
+Sistema_EPP/data/entrenamiento/
 
 
