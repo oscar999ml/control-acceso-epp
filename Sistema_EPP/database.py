@@ -4,6 +4,13 @@ import sqlite3
 from pathlib import Path
 from typing import Iterable
 
+__all__ = [
+    "ROOT", "DATA_DIR", "DB_PATH", "connect", "init_db",
+    "list_cameras", "add_camera", "delete_camera",
+    "add_worker", "delete_worker", "list_workers", "get_worker",
+    "save_worker_face", "log_violation", "list_violations",
+    "count_by_type", "log_access_event", "list_access_events",
+]
 
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
