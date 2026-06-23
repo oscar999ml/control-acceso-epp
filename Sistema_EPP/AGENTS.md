@@ -31,3 +31,4 @@ Sin necesidad de entrenar nada.
 - Crear `setup.bat` que automatice venv + pip install
 - El calendario de GitHub tardará ~24h en mostrar los 16 commits
 - Renombrar rama `master` a `main` si se prefiere el estándar moderno
+- Agregar soporte para WebSocket en tiempo real
